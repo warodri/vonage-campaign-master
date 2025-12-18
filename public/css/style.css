@@ -1,0 +1,181 @@
+/* Custom styles for CSV Pivot Report Generator */
+
+body {
+  background-color: #f8f9fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.hidden {
+  display:none
+}
+
+.pivot-table {
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pivot-table thead th {
+  font-weight: 600;
+  background-color: #e9ecef !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.group-header {
+  width: 50%;
+  min-width: 300px;
+}
+
+.pivot-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.pivot-table .table-dark {
+  background-color: #cfe2ff !important;
+}
+
+.pivot-table .table-secondary {
+  background-color: #e2e3e5 !important;
+}
+
+.nested-group-0 {
+  background-color: #f8f9fa;
+}
+
+.nested-group-1 {
+  background-color: #ffffff;
+}
+
+.breakdown-row td {
+  font-size: 0.95em;
+}
+
+/* Indentation for nested groups */
+.ps-2 {
+  padding-left: 1rem !important;
+}
+
+.ps-3 {
+  padding-left: 2rem !important;
+}
+
+.ps-4 {
+  padding-left: 3rem !important;
+}
+
+.ps-5 {
+  padding-left: 4rem !important;
+}
+
+/* Card styling */
+.card {
+  border: none;
+  border-radius: 8px;
+}
+
+.card-header {
+  border-radius: 8px 8px 0 0 !important;
+  font-weight: 600;
+}
+
+/* Form styling */
+.form-control:focus {
+  border-color: #4d5561;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Better multi-select styling */
+select[multiple] {
+  height: auto !important;
+  padding: 0.5rem;
+}
+
+select[multiple] option {
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 2px;
+}
+
+select[multiple] option:checked {
+  background: #808080;
+  color: white;
+}
+
+select[multiple] option:hover {
+  background-color: #e9ecef;
+}
+
+
+/* Preview card styling */
+#previewCard {
+  position: sticky;
+  top: 20px;
+  z-index: 100;
+}
+
+#previewCard .table {
+  font-size: 0.85rem;
+  margin-bottom: 0;
+}
+
+#previewCard .table td,
+#previewCard .table th {
+  padding: 0.5rem;
+}
+
+/* Highlight the preview when form changes */
+@keyframes highlight {
+  0% {
+    background-color: #cfe2ff;
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+#previewCard.updated {
+  animation: highlight 0.5s ease-out;
+}
+
+/* Smooth transitions for table updates */
+#previewTableBody {
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Make the preview more compact */
+#previewCard .breakdown-row td {
+  font-size: 0.8rem;
+}
+
+#previewCard .nested-group-0,
+#previewCard .nested-group-1 {
+  background-color: #f8f9fa;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background-color: white;
+  }
+
+  .pivot-table {
+    font-size: 10pt;
+  }
+
+  .container-fluid {
+    padding: 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pivot-table {
+    font-size: 0.85rem;
+  }
+
+  .group-header {
+    min-width: 200px;
+  }
+}
