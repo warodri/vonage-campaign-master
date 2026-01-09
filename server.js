@@ -2,14 +2,14 @@ const express = require('express');
 const path = require('path');
 const config = require('./config');
 const { vonageTellsUsReportIsReady } = require('./lib/vonage-tells-report-is-ready');
-const { askForReport } = require('./lib/ask-for-report');
-const { addReport, readStore, getReport } = require('./lib/reportStore');
+const { readStore, getReport } = require('./lib/reportStore');
 const { renderReport } = require('./lib/renderReport');
 const cors = require('cors');
 const flash = require('connect-flash');
 const methodOverride = require('method-override');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const askReportCommon = require('./lib/ask-report-common');
 
 const app = express();
 
@@ -158,59 +158,49 @@ app.get('/reports/ready/:requestId', (req, res) => {
 // Ask for Vonage Messages API Report
 //
 app.post('/ask-report', utils.checkAuthenticated, async (req, res) => {
+    await askReportCommon.run(req, res, config.apiKey, config.apiSecret);
+})
 
+//
+//  Ask for Vonage Messages API Report
+//  It won't check for authentication since the credenmtials arrive in the payload
+//
+app.post('/ask-report-with-credentials', async (req, res) => {
     const {
-        accountId,
-        dateFrom,
-        dateTo,
-        includeSubaccounts,
-        groupBy,
-        internalGroupBy,
-        showTotalBy,
-        priceColumns
+        apiKey, apiSecret
     } = req.body;
 
-    if (!dateFrom || !dateTo) {
+    if (!apiKey || !apiSecret) {
         return res.status(400).render('error', {
-            error: 'Date range is required',
-            title: 'Error'
+            error: 'We need "apiKey" and "apiSecret"',
+            title: 'Missing credentials'
         });
     }
-
-    const response = await askForReport(
-        config.apiKey,
-        config.apiSecret,
-        accountId,
-        dateFrom,
-        dateTo,
-        includeSubaccounts,
-        groupBy,
-        internalGroupBy,
-        showTotalBy,
-        priceColumns
-    );
-
-    if (response) {
-
-        const requestId = response.request_id;
-
-        //  Store for later
-        addReport({
-            requestId,
-            payload: req.body,
-            ready: false,
-            csvPath: null,
-            createdAt: Date.now()
-        });
-
-        return res.status(200).json({
-            success: true,
-            request_id: requestId
+    try {
+        await askReportCommon.run(req, res, apiKey, apiSecret);
+    } catch(ex) {
+        console.log(ex.message);
+        res.status(200).json({
+            success: false,
+            message: ex.message
         })
+    }
 
-    } else {
-        return res.status(200).json({
-            success: false
+})
+
+//
+//  You can also ask for the report via POSTMAN or similar
+//  See README for instructions.
+//
+app.post('/ask-report-api', async (req, res) => {
+    try {
+        const processReportViaPost = require('./lib/process-report-via-post');
+        await processReportViaPost.run(req, res, req.body);
+    } catch(ex) {
+        console.log(ex.message)
+        res.status(200).json({
+            success: false,
+            message: ex.message
         })
     }
 })
@@ -338,3 +328,4 @@ app.get('/_/metrics', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+

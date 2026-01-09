@@ -1,1 +1,54 @@
-[]
+[
+  {
+    "requestId": "ri3p58f-a791cc6c-3cee-4940-be64-10ad215a8bd8",
+    "payload": {
+      "apiKey": "74c96a88",
+      "apiSecret": "hATFl2CY4UmuSOSl",
+      "accountId": "74c96a88",
+      "dateFrom": "2025-08-01",
+      "dateTo": "2026-01-09",
+      "includeSubaccounts": false,
+      "groupBy": "country_name",
+      "internalGroupBy": [
+        "from"
+      ],
+      "showTotalBy": [
+        "status"
+      ],
+      "priceColumns": [
+        "estimated_price",
+        "total_price"
+      ]
+    },
+    "ready": true,
+    "csvPath": "/Users/warodriguez/Documents/VONAGE/CODING/CAMPAIGN-MASTER/downloads/report_MESSAGES_74c96a88_20260109.csv",
+    "createdAt": 1767967414187,
+    "completedAt": 1767967417072
+  },
+  {
+    "requestId": "ri3p58f-9df9048f-beec-4f73-83f5-884aa81ac8d1",
+    "payload": {
+      "apiKey": "74c96a88",
+      "apiSecret": "hATFl2CY4UmuSOSl",
+      "accountId": "74c96a88",
+      "dateFrom": "2025-08-01",
+      "dateTo": "2026-01-09",
+      "includeSubaccounts": false,
+      "groupBy": "country_name",
+      "internalGroupBy": [
+        "from"
+      ],
+      "showTotalBy": [
+        "status"
+      ],
+      "priceColumns": [
+        "estimated_price",
+        "total_price"
+      ]
+    },
+    "ready": true,
+    "csvPath": "/Users/warodriguez/Documents/VONAGE/CODING/CAMPAIGN-MASTER/downloads/report_MESSAGES_74c96a88_20260109.csv",
+    "createdAt": 1767967581818,
+    "completedAt": 1767967584760
+  }
+]
