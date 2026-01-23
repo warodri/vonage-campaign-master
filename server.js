@@ -10,43 +10,50 @@ const methodOverride = require('method-override');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const askReportCommon = require('./lib/ask-report-common');
-
 const app = express();
+const utils = require('./utils')
 
 app.set('trust proxy', 1);
 
+/**
+ * Cookies for authorisation
+ */
 app.use(
     session({
         secret: 'secretcat',
         resave: false,
         saveUninitialized: false,
         cookie: {
-            secure: false, // OK for now
+            secure: false, 
             sameSite: 'lax',
             maxAge: 24 * 60 * 60 * 1000,
         },
     })
 );
 
-// Enable CORS for all origins and methods
+/**
+ * Enable CORS
+ */
 app.use(cors({
-    origin: true,        // reflect request origin
+    origin: true,        
     credentials: true,   // ALLOW cookies
 }));
 
 const PORT = config.PORT;
 
-//  Neru & Login
+/**
+ * Neru & Login
+ */
 const { neru, State } = require('neru-alpha');
 const passport = require('passport');
 const initializePassport = require('./initializePassport');
 const sessionStore = neru.getGlobalSession();
-const globalState = new State(sessionStore);  // In debug this loses the data. Deploy is fine. Make sure your vcr.yml file contains "preserve-data: true" for debug
+const globalState = new State(sessionStore);
+const userStore = require('./common/user_store');
 
-const userStore = require('./common/user_store')
-const utils = require('./utils')
-
-//  MIDDLEWARE
+/**
+ * MIDDLEWARE
+ */
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(flash());
@@ -57,6 +64,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.set('view engine', 'ejs');
 
+/**
+ * Using Passport for login
+ */
 initializePassport(
     passport,
     async (email) => {
@@ -65,7 +75,9 @@ initializePassport(
     },
 );
 
-// Label mapping for display names
+/**
+ * Reports API columns to labels
+ */
 const COLUMN_LABELS = {
     'account_id': 'Account ID',
     'country_name': 'Country Name',
@@ -89,48 +101,56 @@ const COLUMN_LABELS = {
     'network_name': 'Network Name'
 };
 
-// Helper function to get label
+/**
+ * Helper function to get label from the reports API
+ */
 function getLabel(columnName) {
     return COLUMN_LABELS[columnName] || columnName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-// Set EJS as templating engine
+/**
+ * We have EJS as templating engine
+ */
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Serve static files
+/**
+ * Serve static files
+ */
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 //
-// Home route - shows the form
+// Home route - shows the Form to send the report
 //
 app.get('/', utils.checkAuthenticated, (req, res) => {
     res.render('index', {
         title: 'CSV Pivot Report Generator',
         COLUMN_LABELS
-    });
-});
+    })
+})
 
 //
-//  Get past reports
+//  Get past reports. User can require this from the UI
 //
 app.get('/reports/history', utils.checkAuthenticated, (req, res) => {
     const reports = readStore()
         .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 20); // last 20 reports
+        .slice(0, 20); // Return the 20 last reports only
 
     res.status(200).json({
         success: true,
         reports
-    });
-});
+    })
+})
 
 //
 // Is report ready?
+// The UI queries this to check if the report is ready.
 //
 app.get('/reports/ready/:requestId', (req, res) => {
+
     if (!req.params.requestId) {
         return res.status(200).json({
             success: false,
@@ -152,7 +172,8 @@ app.get('/reports/ready/:requestId', (req, res) => {
         csvPath: item.csvPath,
         payload: item
     })
-});
+
+})
 
 //
 // Ask for Vonage Messages API Report
@@ -163,7 +184,7 @@ app.post('/ask-report', utils.checkAuthenticated, async (req, res) => {
 
 //
 //  Ask for Vonage Messages API Report
-//  It won't check for authentication since the credenmtials arrive in the payload
+//  IMPORTANT: It won't check for authentication since the credenmtials arrive in the payload.
 //
 app.post('/ask-report-with-credentials', async (req, res) => {
     const {
@@ -176,6 +197,7 @@ app.post('/ask-report-with-credentials', async (req, res) => {
             title: 'Missing credentials'
         });
     }
+
     try {
         await askReportCommon.run(req, res, apiKey, apiSecret);
     } catch(ex) {
@@ -185,7 +207,6 @@ app.post('/ask-report-with-credentials', async (req, res) => {
             message: ex.message
         })
     }
-
 })
 
 //
@@ -206,7 +227,8 @@ app.post('/ask-report-api', async (req, res) => {
 })
 
 //
-// Generate report route
+// This is the route to finally generate the report 
+// based on the data and then render the UI.
 //
 app.post('/generate-report', utils.checkAuthenticated, async (req, res) => {
     try {
@@ -218,7 +240,7 @@ app.post('/generate-report', utils.checkAuthenticated, async (req, res) => {
             error: err.message
         });
     }
-});
+})
 
 //
 //  Allow to open a history report
@@ -233,7 +255,6 @@ app.post('/reports/open/:requestId', utils.checkAuthenticated, async (req, res) 
         });
     }
 
-    // Inject expected body
     req.body = {
         csvPath: report.csvPath,
         dateFrom: report.payload.dateFrom,
@@ -254,20 +275,26 @@ app.post('/reports/open/:requestId', utils.checkAuthenticated, async (req, res) 
             error: err.message
         });
     }
-});
+})
 
-//  Waiting for Vonage's reports
+/**
+ * This is the Callback URL we provide to Vonage 
+ * so Reports API sends us the ZIP file here.
+ */
 app.post('/reports/callback/:token', async (req, res) => {
     await vonageTellsUsReportIsReady(req, res);
 })
 
-
-// Create account
+/**
+ * Shows the UI for creating a new user
+ */
 app.get('/new-user', async (req, res) => {
     res.render('users-new', {});
 })
 
-// Login
+/**
+ * Shows the UI for entering credentials
+ */
 app.get('/login', async (req, res) => {
     const allUsers = await userStore.getAllUsers(globalState);
     if (!allUsers || allUsers.length == 0) {
@@ -289,7 +316,7 @@ app.post('/admin/users/create', async (req, res) => {
 })
 
 /**
- * Login
+ * Checks for credentials entered in the UI
  */
 app.post('/login', utils.checkNotAuthenticated, (req, res, next) => {
     passport.authenticate('local', (err, user, info) => {
@@ -308,23 +335,26 @@ app.post('/login', utils.checkNotAuthenticated, (req, res, next) => {
             return res.redirect('/');
         });
     })(req, res, next);
-});
+})
 
 
-
-
-
-// VCR
+/**
+ * This is VCR specific
+ */
 app.get('/_/health', async (req, res) => {
     res.sendStatus(200);
 });
 
-//  VCR
+/**
+ * This is VCR specific
+ */
 app.get('/_/metrics', async (req, res) => {
     res.sendStatus(200);
 });
 
-// Start server
+/**
+ * Starts the server
+ */
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

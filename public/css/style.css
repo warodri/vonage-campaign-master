@@ -1,12 +1,10 @@
-/* Custom styles for CSV Pivot Report Generator */
-
 body {
   background-color: #f8f9fa;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .hidden {
-  display:none
+  display: none
 }
 
 .pivot-table {
@@ -51,7 +49,6 @@ body {
   font-size: 0.95em;
 }
 
-/* Indentation for nested groups */
 .ps-2 {
   padding-left: 1rem !important;
 }
@@ -68,7 +65,6 @@ body {
   padding-left: 4rem !important;
 }
 
-/* Card styling */
 .card {
   border: none;
   border-radius: 8px;
@@ -79,13 +75,11 @@ body {
   font-weight: 600;
 }
 
-/* Form styling */
 .form-control:focus {
   border-color: #4d5561;
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
-/* Better multi-select styling */
 select[multiple] {
   height: auto !important;
   padding: 0.5rem;
@@ -106,8 +100,6 @@ select[multiple] option:hover {
   background-color: #e9ecef;
 }
 
-
-/* Preview card styling */
 #previewCard {
   position: sticky;
   top: 20px;
@@ -124,7 +116,6 @@ select[multiple] option:hover {
   padding: 0.5rem;
 }
 
-/* Highlight the preview when form changes */
 @keyframes highlight {
   0% {
     background-color: #cfe2ff;
@@ -139,12 +130,10 @@ select[multiple] option:hover {
   animation: highlight 0.5s ease-out;
 }
 
-/* Smooth transitions for table updates */
 #previewTableBody {
   transition: opacity 0.2s ease-in-out;
 }
 
-/* Make the preview more compact */
 #previewCard .breakdown-row td {
   font-size: 0.8rem;
 }
@@ -154,7 +143,6 @@ select[multiple] option:hover {
   background-color: #f8f9fa;
 }
 
-/* Print styles */
 @media print {
   body {
     background-color: white;
@@ -169,7 +157,6 @@ select[multiple] option:hover {
   }
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
   .pivot-table {
     font-size: 0.85rem;

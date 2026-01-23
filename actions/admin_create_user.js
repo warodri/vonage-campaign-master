@@ -58,15 +58,6 @@ async function action(req, res, globalState) {
             password,
         })
 
-        // await globalState.hset('users', {
-        //     [email]: JSON.stringify({
-        //         id: uuidv4(),
-        //         email,
-        //         name,
-        //         password,
-        //     }),
-        // })
-
         return res.status(200).json({
             message: 'User created'
         })

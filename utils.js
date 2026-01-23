@@ -1,14 +1,18 @@
 const { DateTime } = require('luxon');
-const checkSenderIdValid = (senderId) => /^[a-zA-Z0-9]*$/gm.test(senderId);
 const { tokenGenerate } = require('@vonage/jwt');
 const { v4: uuidv4 } = require('uuid');
+const checkSenderIdValid = (senderId) => /^[a-zA-Z0-9]*$/gm.test(senderId);
+
 /**
- * You can use predefined VCR variables. 
+ * We use predefined VCR variables. 
  * See more: https://developer.vonage.com/en/vonage-cloud-runtime/getting-started/deploying#injected-environment-variables
  */
 const privateKey = process.env.VCR_PRIVATE_KEY;
 const applicationId = process.env.VCR_API_APPLICATION_ID;
 
+/**
+ * Get all stored users from globalState
+ */
 const getUsers = async (globalState) => {
     try {
         const users = await globalState.hvals('users');
@@ -42,7 +46,6 @@ const validateAuthTokenFromRequest = async (globalState, req) => {
 const validateAuthToken = async (globalState, token) => {
     try {
         const storedToken = await await globalState.hvals('authTokens');
-        console.log(storedToken)
         for (let item of storedToken) {
             const value = JSON.parse(item)
             if (value.token == token) {
@@ -55,7 +58,6 @@ const validateAuthToken = async (globalState, token) => {
         return false;
     }
 }
-
 
 const createAuthorisationToken = async (globalState, password) => {
     try {
@@ -101,8 +103,6 @@ const createAuthorisationToken = async (globalState, password) => {
     }
 }
 
-
-
 const getTemplateById = async (templateId, globalState) => {
     try {
         const TEMPLATES_TABLENAME = 'TEMPLATES';
@@ -111,9 +111,7 @@ const getTemplateById = async (templateId, globalState) => {
             const data = JSON.parse(templates[key]);
             return { ...data };
         })
-        console.log('parsedTemplates', parsedTemplates)
         const template = parsedTemplates.find((template) => template.id == templateId);
-        console.log('Template found', template)
         return template;
     } catch (ex) {
         console.log('getTemplateById', ex)
@@ -127,6 +125,7 @@ const secondsTillEndOfDay = () => {
     const diffSeconds = parseInt((germanTime - now) / 1000);
     return diffSeconds;
 };
+
 const timeNow = () => {
     const now = DateTime.now().setZone('Europe/Berlin');
     return now.c.hour;
