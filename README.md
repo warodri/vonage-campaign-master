@@ -12,32 +12,6 @@ A Node.js web application that generates beautiful pivot table reports from CSV 
 - **Print Support**: Print-optimized reports
 - **Nested Grouping**: Support for multiple levels of data grouping
 
-## Installation
-
-1. **Clone or download the project**
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Check config.js**:
-The file **config.js** must hold your Vonage's ApiKey and ApiSecret. 
-It is recommended to host in VCR so credentials are not hardcoded.
-
-4. **Start the server**:
-   ```bash
-   npm start
-   ```
-
-   For development with auto-reload:
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**:
-   Navigate to `http://localhost:3003`
-
 ## Usage
 
 ### Web Interface
@@ -51,107 +25,6 @@ It is recommended to host in VCR so credentials are not hardcoded.
       - Fill in the form with your CSV path and grouping parameters
       - Click "Generate Report" to create your pivot table
 
-### Function Parameters
-
-The core function is `analyseReport()` with the following parameters:
-
-```javascript
-analyseReport(csvPath, accountIds, groupBy, internalGroupBy, showTotalBy, priceColumns)
-```
-
-**Parameters:**
-
-- **csvPath** (string, required): Full path to the CSV file
-  - Example: `'./downloads/sample.csv'`
-
-- **accountIds** (array of strings, optional): Account IDs to filter
-  - Example: `['76ea2717', '12345678']`
-  - Empty array processes all accounts
-
-- **groupBy** (string, required): Column name for main grouping
-  - Example: `'country_name'`
-
-- **internalGroupBy** (array of strings, optional): Columns for nested grouping
-  - Example: `['provider', 'session_type']`
-  - Creates hierarchical groups within each main group
-
-- **showTotalBy** (array of strings, optional): Columns to break down totals
-  - Example: `['status']`
-  - Shows detailed breakdowns at the lowest level
-
-- **priceColumns** (array of strings, optional): Columns containing monetary values
-  - Example: `['estimated_price', 'total_price']`
-  - These columns will be summed and formatted as currency
-
-### Example Usage
-
-```javascript
-const reportData = await analyseReport(
-  './downloads/sample.csv',
-  ['76ea2717'],
-  'country_name',
-  ['provider', 'session_type'],
-  ['status'],
-  ['estimated_price', 'total_price']
-);
-```
-
-This will generate a report that:
-1. Filters data for account ID `76ea2755`
-2. Groups by `country_name` (e.g., Sweden, Germany, France)
-3. Within each country, groups by `provider` (e.g., whatsapp, sms)
-4. Within each provider, groups by `session_type` (e.g., marketing, utility)
-5. Shows breakdowns by `status` (e.g., delivered, rejected, submitted)
-6. Calculates totals for `estimated_price` and `total_price`
-
-## CSV Format
-
-Your CSV file should have headers in the first row. The sample CSV includes these columns:
-
-```
-account_id, message_id, client_ref, direction, from, to, country, 
-country_name, provider, session_type, status, currency, 
-estimated_price, total_price, ...
-```
-
-**Important Notes:**
-- Column names can vary - the app is flexible
-- The app will auto-detect currency from the `currency` column
-- JSON objects in columns are automatically parsed and displayed nicely
-- Price columns should contain numeric values
-
-## Project Structure
-
-```
-csv-pivot-report/
-├── config.js                             # See some varilbes you can change for running locally
-├── server.js                             # Express server and routes
-├── lib/
-│   └── ask-for-report.js                 # Sends the request to Vonage
-│   └── ask-for-report-common.js          # Common function that calls ask-for-report.js in differnt ways
-│   └── download-file.js                  # Downloads the ZIP once the report is ready
-│   └── process-report-via-post.js        # If you use POSTMAN or similar, you can also use this app
-│   └── reportAnalyser.js                 # Core CSV processing logic - Does not return the totals. The totals are processed inside report.ejs
-│   └── reportAnalyserWithTotals.js       # Core CSV processing logic - This one calculates the totals because it's used from process-report-via-post.js
-│   └── renderReport.js                   # Calls reportAnalyser.js
-│   └── reportStore.js                    # Several functions to store and recover the report data
-│   └── unzip-and-delete.js               # Unzips and then deletes the report from Vonage
-│   └── vonage-tells-report-is-ready.js   # Listening for when Vonage delivers the Report
-├── views/
-│   ├── error.ejs                         # Error page
-│   ├── index.ejs                         # Home page form
-│   ├── login.ejs                         # Index page
-│   ├── report.ejs                        # Pivot table report
-│   ├── users-new.ejs                     # Creates users
-├── public/
-│   └── css/
-│       └── style.css               # Custom styles
-├── downloads/
-│   └── sample.csv                  # Sample CSV data
-├── package.json
-└── README.md
-```
-
 ## API Routes
 
 ### GET `/`
@@ -163,9 +36,7 @@ If you don't want to use the UI, then you can use POSTMAN or similar to generate
 ### Payload
 ```
 {
-    "apiKey": "YOUR VONAGE API KEY",
-    "apiSecret": "YOUR VONAGE API SECRET",
-    "accountId": "API KEY YOU WANT TO GET THE REPORT",
+    "apiKey": "API KEY YOU WANT TO GET THE REPORT",
     "dateFrom": "2025-08-01",
     "dateTo": "2026-01-09",
     "includeSubaccounts": false,
@@ -243,7 +114,7 @@ Based on that, the process will generate a report and respond like this:
                             "nestedGroups": [
                                 {
                                     "column": "from",
-                                    "value": "15557618945",
+                                    "value": "15557699999",
                                     "children": [
                                         {
                                             "breakdownColumn": "status",
@@ -584,7 +455,7 @@ Based on that, the process will generate a report and respond like this:
         },
         "dateFrom": "2025-08-01",
         "dateTo": "2026-01-09",
-        "accountId": "74c96a88",
+        "accountId": "74c96a99",
         "groupBy": "country_name",
         "internalGroupBy": [
             "from"
@@ -636,31 +507,6 @@ Click the "Print" button to generate a print-friendly version of the report with
 - Removed navigation and buttons
 - Optimized table sizing
 - Clean layout for professional documents
-
-## Customization
-
-### Styling
-
-Edit `/public/css/style.css` to customize:
-- Colors and themes
-- Table styling
-- Spacing and layout
-- Print styles
-
-### Templates
-
-Edit EJS templates in `/views/`:
-- `index.ejs`: Modify the input form
-- `report.ejs`: Change report layout and formatting
-- `error.ejs`: Customize error messages
-
-### Processing Logic
-
-Edit `/lib/reportAnalyser.js` to:
-- Add custom aggregations
-- Implement additional grouping strategies
-- Add data validation rules
-- Support new data types
 
 ## Troubleshooting
 

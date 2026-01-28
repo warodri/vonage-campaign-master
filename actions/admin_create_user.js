@@ -44,10 +44,9 @@ async function action(req, res, globalState) {
         } catch(ex) {}        
 
         if (userCount > 0 && !isAdmin) {
-            return res.status(200).json({
+            return res.status(403).json({
                 success: false,
-                message: `Only ${Config.ADMIN} can create additional users`,
-                existingUsers
+                message: 'Insufficient permissions'
             });
         }        
 

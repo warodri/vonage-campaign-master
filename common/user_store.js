@@ -1,4 +1,7 @@
+const bcrypt = require('bcrypt');
+
 const USERS_HASH = 'users';
+const SALT_ROUNDS = 12;
 
 /**
  * Store or update a user
@@ -7,9 +10,13 @@ const USERS_HASH = 'users';
  */
 async function saveUser(globalState, user) {
     if (!user.email) throw new Error('User must have an email');
-    const email = user.email;
-    await globalState.hset('users', {
-        [email]: JSON.stringify(user)
+    const userToSave = { ...user };
+    // Hash password if present and not already hashed
+    if (user.password && !user.password.startsWith('$2')) {
+        userToSave.password = await bcrypt.hash(user.password, SALT_ROUNDS);
+    }
+    await globalState.hset(USERS_HASH, {
+        [user.email]: JSON.stringify(userToSave)
     })
 }
 
@@ -71,25 +78,10 @@ async function updateUser(globalState, email, updates) {
     return updated;
 }
 
-/**
- * Login a user - Must provide all the info
- * @param {Object} globalState 
- * @param {string} email 
- * @param {string} password 
- */
-const loginUser = async (globalState, email, password) => {
-    const user = {
-        email,
-        password, // use bcrypt in production!
-    };
-    await globalState.hset('users', email, JSON.stringify(user));
-}
-
 module.exports = {
     saveUser,
     getUserByEmail,
     getAllUsers,
     searchUsersByName,
     updateUser,
-    loginUser,
 };

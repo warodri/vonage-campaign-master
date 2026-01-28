@@ -1,6 +1,6 @@
 {
   "name": "csv-pivot-report",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CSV Pivot Table Report Generator",
   "main": "server.js",
   "scripts": {
@@ -11,6 +11,7 @@
     "@vonage/jwt": "^1.12.1",
     "adm-zip": "^0.5.16",
     "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
     "body-parser": "^2.2.1",
     "connect-flash": "^0.1.1",
     "cookie-session": "^2.1.1",

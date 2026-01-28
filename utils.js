@@ -2,6 +2,7 @@ const { DateTime } = require('luxon');
 const { tokenGenerate } = require('@vonage/jwt');
 const { v4: uuidv4 } = require('uuid');
 const checkSenderIdValid = (senderId) => /^[a-zA-Z0-9]*$/gm.test(senderId);
+const bcrypt = require('bcrypt'); 
 
 /**
  * We use predefined VCR variables. 
@@ -45,55 +46,50 @@ const validateAuthTokenFromRequest = async (globalState, req) => {
 }
 const validateAuthToken = async (globalState, token) => {
     try {
-        const storedToken = await await globalState.hvals('authTokens');
-        for (let item of storedToken) {
-            const value = JSON.parse(item)
-            if (value.token == token) {
+        // Retrieve all token objects stored under email keys
+        const storedTokens = await globalState.hvals('authTokens'); 
+        for (let item of storedTokens) {
+            const value = JSON.parse(item);
+            // Compare the provided token with the stored uuidv4 token
+            if (value.token === token) {
                 return true;
             }
         }
         return false;
     } catch (ex) {
-        console.log('validateAuthToken', ex)
+        console.log('validateAuthToken error:', ex);
         return false;
     }
 }
 
-const createAuthorisationToken = async (globalState, password) => {
+const createAuthorisationToken = async (globalState, email, password) => {
     try {
-        if (!password) {
-            console.log('createAuthorisationToken - no passowrd sent');
+        if (!email || !password) {
+            console.log('createAuthorisationToken - missing credentials');
             return null;
         }
 
-        const users = await getUsers(globalState)
-        console.log(users)
-        if (!users) {
-            console.log('createAuthorisationToken - no users found');
-            return null;
-        }
+        // 1. Fetch the specific user
+        const customer = await globalState.hget('users', email);
+        if (!customer) return null;
+        const user = JSON.parse(customer);
 
-        let passwordFound = false;
-        for (let item of users) {
-            const u = JSON.parse(item)
-            if (u.password == password) {
-                passwordFound = true;
-                break;
-            }
-        }
-
-        if (!passwordFound) {
-            console.log('createAuthorisationToken - Invalid passowrd sent');
+        // 2. Verify password securely
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+            console.log('createAuthorisationToken - Invalid password');
             return null;
         }
 
         const token = uuidv4();
 
+        // 3. FIX: Use email as the key, NOT the password
         await globalState.hset('authTokens', {
-            [password]: JSON.stringify({
+            [email]: JSON.stringify({
                 token,
+                createdAt: Date.now()
             }),
-        })
+        });
 
         return token;
 

@@ -1,0 +1,80 @@
+[
+  {
+    "requestId": "ri3p58f-3d89be78-1674-41e5-9f72-12061dfcfd2d",
+    "payload": {
+      "apiKey": "74c96a88",
+      "apiSecret": "hATFl2CY4UmuSOSl",
+      "accountId": "74c96a88",
+      "dateFrom": "2025-08-01",
+      "dateTo": "2026-01-09",
+      "includeSubaccounts": false,
+      "groupBy": "country_name",
+      "internalGroupBy": [
+        "from"
+      ],
+      "showTotalBy": [
+        "status"
+      ],
+      "priceColumns": [
+        "estimated_price",
+        "total_price"
+      ]
+    },
+    "ready": true,
+    "csvPath": "/Users/warodriguez/Documents/VONAGE/CODING/CAMPAIGN-MASTER/downloads/report_MESSAGES_74c96a88_20260128.csv",
+    "createdAt": 1769605105564,
+    "completedAt": 1769605108310
+  },
+  {
+    "requestId": "ri3p58f-f029e3c4-1e9b-43cd-8b10-8a92a7bf54d3",
+    "payload": {
+      "apiKey": "74c96a88",
+      "apiSecret": "hATFl2CY4UmuSOSl",
+      "accountId": "74c96a88",
+      "dateFrom": "2025-08-01",
+      "dateTo": "2026-01-09",
+      "includeSubaccounts": false,
+      "groupBy": "country_name",
+      "internalGroupBy": [
+        "from"
+      ],
+      "showTotalBy": [
+        "status"
+      ],
+      "priceColumns": [
+        "estimated_price",
+        "total_price"
+      ]
+    },
+    "ready": true,
+    "csvPath": "/Users/warodriguez/Documents/VONAGE/CODING/CAMPAIGN-MASTER/downloads/report_MESSAGES_74c96a88_20260128.csv",
+    "createdAt": 1769605135243,
+    "completedAt": 1769605138007
+  },
+  {
+    "requestId": "ri3p58f-f128726e-e73c-4ad9-a7fa-937a4d748468",
+    "payload": {
+      "apiKey": "74c96a88",
+      "apiSecret": "hATFl2CY4UmuSOSl",
+      "accountId": "74c96a88",
+      "dateFrom": "2025-08-01",
+      "dateTo": "2026-01-09",
+      "includeSubaccounts": false,
+      "groupBy": "country_name",
+      "internalGroupBy": [
+        "from"
+      ],
+      "showTotalBy": [
+        "status"
+      ],
+      "priceColumns": [
+        "estimated_price",
+        "total_price"
+      ]
+    },
+    "ready": true,
+    "csvPath": "/Users/warodriguez/Documents/VONAGE/CODING/CAMPAIGN-MASTER/downloads/report_MESSAGES_74c96a88_20260128.csv",
+    "createdAt": 1769605165526,
+    "completedAt": 1769605167897
+  }
+]

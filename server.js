@@ -20,12 +20,13 @@ app.set('trust proxy', 1);
  */
 app.use(
     session({
-        secret: 'secretcat',
+        secret: config.apiSecret,
         resave: false,
         saveUninitialized: false,
         cookie: {
-            secure: false, 
-            sameSite: 'lax',
+            secure: true, 
+            httpOnly: true,     
+            sameSite: 'strict',
             maxAge: 24 * 60 * 60 * 1000,
         },
     })
@@ -35,8 +36,8 @@ app.use(
  * Enable CORS
  */
 app.use(cors({
-    origin: true,        
-    credentials: true,   // ALLOW cookies
+    origin: process.env.VCR_INSTANCE_PUBLIC_URL,
+    credentials: true,  // Allow cookies
 }));
 
 const PORT = config.PORT;
@@ -135,28 +136,26 @@ app.get('/', utils.checkAuthenticated, (req, res) => {
 //  Get past reports. User can require this from the UI
 //
 app.get('/reports/history', utils.checkAuthenticated, (req, res) => {
-    const reports = readStore()
+    const allReports = readStore();
+    
+    // Filter to only show reports belonging to the current user
+    const userReports = allReports
         .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 20); // Return the 20 last reports only
+        .slice(0, 20);
 
     res.status(200).json({
         success: true,
-        reports
-    })
+        reports: userReports
+    });
 })
 
 //
 // Is report ready?
 // The UI queries this to check if the report is ready.
 //
-app.get('/reports/ready/:requestId', (req, res) => {
+app.get('/reports/ready/:requestId', utils.checkAuthenticated, (req, res) => {
 
-    if (!req.params.requestId) {
-        return res.status(200).json({
-            success: false,
-            message: 'Invalid request ID'
-        })
-    }
+    console.log('Asking if report id is ready: ', req.params)
 
     const item = getReport(req.params.requestId);
     if (!item) {
@@ -187,24 +186,30 @@ app.post('/ask-report', utils.checkAuthenticated, async (req, res) => {
 //  IMPORTANT: It won't check for authentication since the credenmtials arrive in the payload.
 //
 app.post('/ask-report-with-credentials', async (req, res) => {
+    
+    //  Set timeout for this specific request
+    //  This report is syncronous now. It can take time.
+    //  In my coming version I'm implementing a callback
+    req.setTimeout(60000); // 60 seconds
+
     const {
-        apiKey, apiSecret
+        apiKey
     } = req.body;
 
-    if (!apiKey || !apiSecret) {
+    if (!apiKey) {
         return res.status(400).render('error', {
-            error: 'We need "apiKey" and "apiSecret"',
+            error: 'We need "apiKey"',
             title: 'Missing credentials'
         });
     }
 
     try {
-        await askReportCommon.run(req, res, apiKey, apiSecret);
+        await askReportCommon.run(req, res, apiKey);
     } catch(ex) {
         console.log(ex.message);
         res.status(200).json({
             success: false,
-            message: ex.message
+            message: 'Error generating report'
         })
     }
 })
@@ -212,6 +217,7 @@ app.post('/ask-report-with-credentials', async (req, res) => {
 //
 //  You can also ask for the report via POSTMAN or similar
 //  See README for instructions.
+//  IMPORTANT: The request body must contain apiKey and apiSecret. That's the security for this endpoint.
 //
 app.post('/ask-report-api', async (req, res) => {
     try {
@@ -221,7 +227,7 @@ app.post('/ask-report-api', async (req, res) => {
         console.log(ex.message)
         res.status(200).json({
             success: false,
-            message: ex.message
+            message: 'Error processing report'
         })
     }
 })
@@ -248,7 +254,15 @@ app.post('/generate-report', utils.checkAuthenticated, async (req, res) => {
 app.post('/reports/open/:requestId', utils.checkAuthenticated, async (req, res) => {
     const report = getReport(req.params.requestId);
 
-    if (!report || !report.ready || !report.csvPath) {
+    // 1. Check if the report exists
+    if (!report) {
+        return res.status(404).render('error', { 
+            title: 'Error', 
+            error: 'Report not found' 
+        });
+    }
+
+    if (!report.ready || !report.csvPath) {
         return res.status(200).render('error', {
             title: 'Error',
             error: 'Report not found or not ready'
@@ -320,9 +334,6 @@ app.post('/admin/users/create', async (req, res) => {
  */
 app.post('/login', utils.checkNotAuthenticated, (req, res, next) => {
     passport.authenticate('local', (err, user, info) => {
-        console.log('[AUTH] err:', err);
-        console.log('[AUTH] user:', user);
-        console.log('[AUTH] info:', info);
 
         if (err) return next(err);
         if (!user) {
@@ -355,7 +366,7 @@ app.get('/_/metrics', async (req, res) => {
 /**
  * Starts the server
  */
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
