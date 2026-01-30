@@ -25,28 +25,24 @@ async function action(req, res, globalState) {
             return;
         }
 
-        //  Can create a user only if:
-        //  a) no users are created
-        //  b) logged user is Config.data.ADMIN
-
         // 1) Get existing users from Redis
         const existingUsers = await globalState.hgetall('users');
         const userCount = existingUsers ? Object.keys(existingUsers).length : 0;
 
         // 2) Check if logged in user is admin
-        const passportUser = await req.user;
+        const passportUser = req.user;
         let isAdmin = false;
-        
+        let loggedUserEmail = null;
+
         try {
-            const jsonPassportUser = JSON.parse(passportUser);
-            const loggedUserEmail = jsonPassportUser.email;
+            loggedUserEmail = passportUser.email;
             isAdmin = loggedUserEmail === Config.ADMIN;
         } catch(ex) {}        
 
         if (userCount > 0 && !isAdmin) {
             return res.status(403).json({
                 success: false,
-                message: 'Insufficient permissions'
+                message: 'Insufficient permissions',
             });
         }        
 

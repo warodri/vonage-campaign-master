@@ -4,16 +4,14 @@ instance:
     name: dev
     runtime: nodejs18
     region: aws.euw1
-    application-id: 33d386bc-42c2-4b38-91e1-6a56621db7b8
+    application-id: 5d47de87-dd23-47f5-8c94-c964163aa657
     entrypoint:
         - node
         - server.js
     scaling:
         min-scale: 1 
 debug:
-    application-id: 33d386bc-42c2-4b38-91e1-6a56621db7b8
+    application-id: 5d47de87-dd23-47f5-8c94-c964163aa657
     entrypoint:
         - node
         - server.js
-    scaling:
-        min-scale: 1 

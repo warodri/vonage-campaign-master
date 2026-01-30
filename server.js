@@ -92,6 +92,7 @@ const COLUMN_LABELS = {
     'direction': 'Direction',
     'from': 'From',
     'to': 'To',
+    'message_body': 'Message body',
     'country': 'Country Code',
     'currency': 'Currency',
     'date_received': 'Date Received',
@@ -199,7 +200,7 @@ app.post('/ask-report-with-credentials', async (req, res) => {
     if (!apiKey) {
         return res.status(400).render('error', {
             error: 'We need "apiKey"',
-            title: 'Missing credentials'
+            title: 'Missing apiKey'
         });
     }
 

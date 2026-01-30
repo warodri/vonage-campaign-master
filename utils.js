@@ -134,7 +134,7 @@ const generateToken = () => {
     });
 };
 
-const checkAuthenticated = (req, res, next) => {
+const checkAuthenticated = async (req, res, next) => {
     if (req.isAuthenticated()) {
         return next();
     }
