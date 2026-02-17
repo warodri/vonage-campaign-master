@@ -45,21 +45,8 @@ const validateAuthTokenFromRequest = async (globalState, req) => {
     }
 }
 const validateAuthToken = async (globalState, token) => {
-    try {
-        // Retrieve all token objects stored under email keys
-        const storedTokens = await globalState.hvals('authTokens'); 
-        for (let item of storedTokens) {
-            const value = JSON.parse(item);
-            // Compare the provided token with the stored uuidv4 token
-            if (value.token === token) {
-                return true;
-            }
-        }
-        return false;
-    } catch (ex) {
-        console.log('validateAuthToken error:', ex);
-        return false;
-    }
+    const tokenData = await globalState.hget('authTokens', token);
+    return tokenData !== null;
 }
 
 const createAuthorisationToken = async (globalState, email, password) => {
@@ -82,13 +69,8 @@ const createAuthorisationToken = async (globalState, email, password) => {
         }
 
         const token = uuidv4();
-
-        // 3. FIX: Use email as the key, NOT the password
         await globalState.hset('authTokens', {
-            [email]: JSON.stringify({
-                token,
-                createdAt: Date.now()
-            }),
+            [token]: JSON.stringify({ email, createdAt: Date.now() })
         });
 
         return token;
@@ -135,6 +117,7 @@ const generateToken = () => {
 };
 
 const checkAuthenticated = async (req, res, next) => {
+    console.log('Logged Email', req.email)
     if (req.isAuthenticated()) {
         return next();
     }

@@ -10,14 +10,16 @@ const SALT_ROUNDS = 12;
  */
 async function saveUser(globalState, user) {
     if (!user.email) throw new Error('User must have an email');
+
     const userToSave = { ...user };
-    // Hash password if present and not already hashed
-    if (user.password && !user.password.startsWith('$2')) {
+
+    if (hashPassword && user.password) {
         userToSave.password = await bcrypt.hash(user.password, SALT_ROUNDS);
     }
+
     await globalState.hset(USERS_HASH, {
         [user.email]: JSON.stringify(userToSave)
-    })
+    });
 }
 
 /**

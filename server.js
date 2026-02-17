@@ -1,36 +1,130 @@
+/**
+ * 3rd party components
+ */
 const express = require('express');
 const path = require('path');
-const config = require('./config');
-const { vonageTellsUsReportIsReady } = require('./lib/vonage-tells-report-is-ready');
-const { readStore, getReport } = require('./lib/reportStore');
-const { renderReport } = require('./lib/renderReport');
 const cors = require('cors');
 const flash = require('connect-flash');
 const methodOverride = require('method-override');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const rateLimit = require('express-rate-limit');
 const askReportCommon = require('./lib/ask-report-common');
 const app = express();
+
+/**
+ * My components
+ */
 const utils = require('./utils')
+const config = require('./config');
+const { vonageTellsUsReportIsReady } = require('./lib/vonage-tells-report-is-ready');
+const { readStore, getReport } = require('./lib/reportStore');
+const { renderReport } = require('./lib/renderReport');
+const PORT = config.PORT;
 
 app.set('trust proxy', 1);
 
 /**
- * Cookies for authorisation
+ * Neru & Login
  */
-app.use(
-    session({
-        secret: config.apiSecret,
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            secure: true, 
-            httpOnly: true,     
-            sameSite: 'strict',
-            maxAge: 24 * 60 * 60 * 1000,
-        },
-    })
-);
+const { neru, State } = require('neru-alpha');
+const passport = require('passport');
+const initializePassport = require('./initializePassport');
+const neruSession = neru.getGlobalSession();
+const globalState = new State(neruSession);
+const userStore = require('./common/user_store');
+const SESSIONS_HASH = 'sessions';
+
+/**
+ * Custom session store using Neru State API
+ */
+class NeruSessionStore extends session.Store {
+    constructor(state) {
+        super();
+        this.state = state;
+    }
+
+    async get(sid, callback) {
+        try {
+            const data = await this.state.hget(SESSIONS_HASH, sid);
+            const sess = data ? JSON.parse(data) : null;
+            callback(null, sess);
+        } catch (err) {
+            callback(err);
+        }
+    }
+
+    async set(sid, sessionData, callback) {
+        try {
+            await this.state.hset(SESSIONS_HASH, {
+                [sid]: JSON.stringify(sessionData)
+            });
+            callback(null);
+        } catch (err) {
+            callback(err);
+        }
+    }
+
+    async destroy(sid, callback) {
+        try {
+            await this.state.hdel(SESSIONS_HASH, [sid]); // hdel takes array of keys
+            callback(null);
+        } catch (err) {
+            callback(err);
+        }
+    }
+
+    async touch(sid, sessionData, callback) {
+        // Update session to refresh expiry
+        await this.set(sid, sessionData, callback);
+    }
+}
+
+/**
+ * Custom rate limit store using Neru State API
+ */
+class NeruRateLimitStore {
+    constructor(state) {
+        this.state = state;
+        this.prefix = 'ratelimit:';
+    }
+
+    async increment(key) {
+        const storeKey = this.prefix + key;
+        const result = await this.state.incrby(storeKey, 1);
+
+        // Set expiry on first increment
+        if (parseInt(result) === 1) {
+            await this.state.expire(storeKey, 900); // 15 minutes
+        }
+
+        return {
+            totalHits: parseInt(result),
+            resetTime: new Date(Date.now() + 900000)
+        };
+    }
+
+    async decrement(key) {
+        const storeKey = this.prefix + key;
+        await this.state.decrby(storeKey, 1);
+    }
+
+    async resetKey(key) {
+        const storeKey = this.prefix + key;
+        await this.state.delete(storeKey);
+    }
+}
+
+/**
+ * Sessions with Neru
+ */
+app.use(session({
+    store: new NeruSessionStore(globalState),
+    secret: config.apiSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: true, httpOnly: true, sameSite: 'strict', maxAge: 24 * 60 * 60 * 1000 }
+}));
 
 /**
  * Enable CORS
@@ -40,30 +134,35 @@ app.use(cors({
     credentials: true,  // Allow cookies
 }));
 
-const PORT = config.PORT;
-
-/**
- * Neru & Login
- */
-const { neru, State } = require('neru-alpha');
-const passport = require('passport');
-const initializePassport = require('./initializePassport');
-const sessionStore = neru.getGlobalSession();
-const globalState = new State(sessionStore);
-const userStore = require('./common/user_store');
 
 /**
  * MIDDLEWARE
  */
+const askReportWithCredentialsLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // 10 attempts per window
+    message: 'Too many attempts, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: new NeruRateLimitStore(globalState),
+});
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(methodOverride('_method'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+/**
+ * We have EJS as templating engine
+ */
 app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+/**
+ * Serve static files
+ */
+app.use(express.static('public'));
 
 /**
  * Using Passport for login
@@ -110,21 +209,9 @@ function getLabel(columnName) {
     return COLUMN_LABELS[columnName] || columnName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-/**
- * We have EJS as templating engine
- */
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-
-/**
- * Serve static files
- */
-app.use(express.static('public'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 //
-// Home route - shows the Form to send the report
+//  Home
+//  Shows the Form to send the report
 //
 app.get('/', utils.checkAuthenticated, (req, res) => {
     res.render('index', {
@@ -134,13 +221,15 @@ app.get('/', utils.checkAuthenticated, (req, res) => {
 })
 
 //
-//  Get past reports. User can require this from the UI
+//  Get past reports
+//  User can require to see past reports from the UI
 //
-app.get('/reports/history', utils.checkAuthenticated, (req, res) => {
-    const allReports = readStore();
-    
+app.get('/reports/history', utils.checkAuthenticated, async (req, res) => {
+    const allReports = await readStore();
+
     // Filter to only show reports belonging to the current user
     const userReports = allReports
+        .filter(r => r.userEmail === req.email)  // Filter to get only this user's report
         .sort((a, b) => b.createdAt - a.createdAt)
         .slice(0, 20);
 
@@ -151,14 +240,16 @@ app.get('/reports/history', utils.checkAuthenticated, (req, res) => {
 })
 
 //
-// Is report ready?
-// The UI queries this to check if the report is ready.
+//  Is report ready?
+//  The UI queries this to check if the report is ready.
 //
-app.get('/reports/ready/:requestId', utils.checkAuthenticated, (req, res) => {
+app.get('/reports/ready/:requestId', utils.checkAuthenticated, async (req, res) => {
 
     console.log('Asking if report id is ready: ', req.params)
 
-    const item = getReport(req.params.requestId);
+    const item = await getReport(req.params.requestId);
+    console.log('readyData: ', item)
+
     if (!item) {
         return res.status(200).json({
             success: false,
@@ -176,9 +267,16 @@ app.get('/reports/ready/:requestId', utils.checkAuthenticated, (req, res) => {
 })
 
 //
-// Ask for Vonage Messages API Report
+//  Ask for Vonage Messages API Report
+//  This is sent from the UI
 //
-app.post('/ask-report', utils.checkAuthenticated, async (req, res) => {
+app.post('/ask-report', askReportWithCredentialsLimiter, utils.checkAuthenticated, async (req, res) => {
+
+    //  Set timeout for this specific request
+    //  This report is syncronous now. It can take time.
+    //  In my coming version I'm implementing a callback
+    req.setTimeout(60000); // 60 seconds
+
     await askReportCommon.run(req, res, config.apiKey, config.apiSecret);
 })
 
@@ -186,7 +284,7 @@ app.post('/ask-report', utils.checkAuthenticated, async (req, res) => {
 //  Ask for Vonage Messages API Report
 //  IMPORTANT: It won't check for authentication since the credenmtials arrive in the payload.
 //
-app.post('/ask-report-with-credentials', async (req, res) => {
+app.post('/ask-report-with-credentials', askReportWithCredentialsLimiter, async (req, res) => {
     
     //  Set timeout for this specific request
     //  This report is syncronous now. It can take time.
@@ -197,7 +295,8 @@ app.post('/ask-report-with-credentials', async (req, res) => {
         apiKey
     } = req.body;
 
-    if (!apiKey) {
+    //  Validate: the request must be for the local api key only
+    if (!apiKey || apiKey != config.apiKey) {
         return res.status(400).render('error', {
             error: 'We need "apiKey"',
             title: 'Missing apiKey'
@@ -220,7 +319,7 @@ app.post('/ask-report-with-credentials', async (req, res) => {
 //  See README for instructions.
 //  IMPORTANT: The request body must contain apiKey and apiSecret. That's the security for this endpoint.
 //
-app.post('/ask-report-api', async (req, res) => {
+app.post('/ask-report-api', askReportWithCredentialsLimiter, async (req, res) => {
     try {
         const processReportViaPost = require('./lib/process-report-via-post');
         await processReportViaPost.run(req, res, req.body);
@@ -235,7 +334,7 @@ app.post('/ask-report-api', async (req, res) => {
 
 //
 // This is the route to finally generate the report 
-// based on the data and then render the UI.
+// based on the CSV file. Then we render the UI.
 //
 app.post('/generate-report', utils.checkAuthenticated, async (req, res) => {
     try {
@@ -253,7 +352,8 @@ app.post('/generate-report', utils.checkAuthenticated, async (req, res) => {
 //  Allow to open a history report
 //
 app.post('/reports/open/:requestId', utils.checkAuthenticated, async (req, res) => {
-    const report = getReport(req.params.requestId);
+    const report = await getReport(req.params.requestId);
+    console.log('/reports/open/:requestId', report)
 
     // 1. Check if the report exists
     if (!report) {
@@ -263,7 +363,7 @@ app.post('/reports/open/:requestId', utils.checkAuthenticated, async (req, res) 
         });
     }
 
-    if (!report.ready || !report.csvPath) {
+    if (!report.ready || !report.requestId) {
         return res.status(200).render('error', {
             title: 'Error',
             error: 'Report not found or not ready'
@@ -271,7 +371,7 @@ app.post('/reports/open/:requestId', utils.checkAuthenticated, async (req, res) 
     }
 
     req.body = {
-        csvPath: report.csvPath,
+        requestId: report.requestId,
         dateFrom: report.payload.dateFrom,
         dateTo: report.payload.dateTo,
         accountId: report.payload.accountId,
@@ -310,7 +410,7 @@ app.get('/new-user', async (req, res) => {
 /**
  * Shows the UI for entering credentials
  */
-app.get('/login', async (req, res) => {
+app.get('/login', askReportWithCredentialsLimiter, async (req, res) => {
     const allUsers = await userStore.getAllUsers(globalState);
     if (!allUsers || allUsers.length == 0) {
         //  Create first user
@@ -370,4 +470,3 @@ app.get('/_/metrics', async (req, res) => {
 app.listen(PORT, async () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
-

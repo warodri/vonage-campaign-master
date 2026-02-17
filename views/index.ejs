@@ -565,18 +565,18 @@
                     clearInterval(pollInterval);
         
                     // 5. Send data to /generate-report
-                    submitGenerateReport(readyData.csvPath, readyData.payload);
+                    submitGenerateReport(requestId, readyData.payload);
                 }
             }, 4000); 
         });
         
-        function submitGenerateReport(csvPath, payload) {
+        function submitGenerateReport(requestId, payload) {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/generate-report';
         
             const fields = {
-                csvPath,
+                requestId,
                 dateFrom: payload.payload.dateFrom,
                 dateTo: payload.payload.dateTo,
                 accountId: payload.payload.accountId,

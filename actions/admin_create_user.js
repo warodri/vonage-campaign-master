@@ -25,37 +25,29 @@ async function action(req, res, globalState) {
             return;
         }
 
-        // 1) Get existing users from Redis
-        const existingUsers = await globalState.hgetall('users');
-        const userCount = existingUsers ? Object.keys(existingUsers).length : 0;
-
-        // 2) Check if logged in user is admin
-        const passportUser = req.user;
-        let isAdmin = false;
-        let loggedUserEmail = null;
-
-        try {
-            loggedUserEmail = passportUser.email;
-            isAdmin = loggedUserEmail === Config.ADMIN;
-        } catch(ex) {}        
-
-        if (userCount > 0 && !isAdmin) {
-            return res.status(403).json({
-                success: false,
-                message: 'Insufficient permissions',
+        if (!initialized) {
+            // First user setup - set flag immediately to prevent race
+            await globalState.set('system:initialized', 'true');
+    
+            // Create the first admin user
+            await userStore.saveUser(globalState, {
+                id: uuidv4(),
+                email,
+                name,
+                password,
+                isAdmin: true
             });
-        }        
-
-        await userStore.saveUser(globalState, {
-            id: uuidv4(),
-            email,
-            name,
-            password,
-        })
-
-        return res.status(200).json({
-            message: 'User created'
-        })
+            return res.status(200).json({ message: 'First user created' });
+        }
+    
+        // System already initialized - require admin auth
+        const passportUser = req.user;
+        if (!passportUser || passportUser.email !== Config.ADMIN) {
+            return res.status(403).json({ message: 'Insufficient permissions' });
+        }
+    
+        await userStore.saveUser(globalState, { id: uuidv4(), email, name, password });
+        return res.status(200).json({ message: 'User created' });
 
     } catch (ex) {
         console.log(ex)
